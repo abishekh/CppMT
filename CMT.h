@@ -37,11 +37,19 @@ public:
     vector<Point2f> points_active; //public for visualization purposes
     RotatedRect bb_rot;
 
+  //METRICS
+    float confidence;   //Confidence calculation.
+    float mean,variance; //Metrics for evaluating how well we are tracking.
+    float initial_box_area;
+    float box_area;
+
 private:
     Ptr<FeatureDetector> detector;
     Ptr<DescriptorExtractor> descriptor;
 
     Size2f size_initial;
+
+	vector<Point2f> points_initial;  //initial foreground keypoints used for confidence calculation
 
     vector<int> classes_active;
 

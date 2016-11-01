@@ -2,6 +2,7 @@
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <math.h>
 
 namespace cmt {
 
@@ -11,6 +12,9 @@ void CMT::initialize(const Mat im_gray, const Rect rect)
 
     //Remember initial size
     size_initial = rect.size();
+
+//Calculate initial box area from size
+    initial_box_area=size_initial.height * size_initial.width;
 
     //Remember initial image
     im_prev = im_gray;
@@ -105,6 +109,9 @@ void CMT::initialize(const Mat im_gray, const Rect rect)
         classes_active = classes_fg;
     }
 
+	//Store initial set of keypoints for confidence calculation
+	points_initial = points_active;
+
     FILE_LOG(logDEBUG) << "CMT::initialize() return";
 }
 
@@ -191,6 +198,12 @@ void CMT::processFrame(Mat im_gray) {
 
     //TODO: Use theta to suppress result
     bb_rot = RotatedRect(center,  size_initial * scale, rotation/CV_PI * 180);
+
+	// Compute tracking confidence
+    confidence = fmin(100.00,(100*((float)points_fused.size() / points_initial.size())));
+
+    //Compute new box size
+    box_area=  bb_rot.size.height * bb_rot.size.width;
 
     //Remember current image
     im_prev = im_gray;

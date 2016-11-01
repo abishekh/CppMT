@@ -34,7 +34,7 @@ using ::atof;
 
 static string WIN_NAME = "CMT";
 static string OUT_FILE_COL_HEADERS =
-    "Frame,Timestamp (ms),Active points,"\
+    "Frame,Timestamp (ms),Active points,Confidence,"\
     "Bounding box centre X (px),Bounding box centre Y (px),"\
     "Bounding box width (px),Bounding box height (px),"\
     "Bounding box rotation (degrees),"\
@@ -61,19 +61,60 @@ vector<float> getNextLineAndSplitIntoFloats(istream& str)
 int display(Mat im, CMT & cmt)
 {
     //Visualize the output
+
+    bool drawbox=true;
+      Scalar box_color;
+
+      if(cmt.confidence>85){
+          box_color=Scalar(62,157,40);
+          drawbox=true;
+      }
+      else if(75<=cmt.confidence && cmt.confidence<=85){
+          box_color=Scalar(0,177,250);
+          drawbox=true;
+      }
+
+      else if(60<=cmt.confidence && cmt.confidence<=74){
+          box_color=Scalar(34,42,229);
+          drawbox=true;
+      }
+
+      else if(cmt.confidence<60){
+          box_color=Scalar(34,42,229);
+          drawbox=false;
+      }
+
+
+
     //It is ok to draw on im itself, as CMT only uses the grayscale image
     for(size_t i = 0; i < cmt.points_active.size(); i++)
     {
         circle(im, cmt.points_active[i], 2, Scalar(255,0,0));
     }
 
+ if(drawbox==true){
     Point2f vertices[4];
     cmt.bb_rot.points(vertices);
     for (int i = 0; i < 4; i++)
     {
         line(im, vertices[i], vertices[(i+1)%4], Scalar(255,0,0));
     }
+ }
 
+    //Show Computed Confidence value
+    char confidence_buffer[100];
+    sprintf(confidence_buffer,"CONFIDENCE: %.2f",cmt.confidence);
+    putText(im,confidence_buffer,Point2f(10,50),2,1,box_color,1,4,false);
+
+    //Show box size - Initial and current.
+    char initial__boxsize_buffer[100];
+    sprintf(initial__boxsize_buffer,"BB-I: %.2f",cmt.initial_box_area);
+    putText(im,initial__boxsize_buffer,Point2f(10,100),2,1,box_color,1,4,false);
+
+
+    char new_boxsize_buffer[100];
+    sprintf(new_boxsize_buffer,"BB-N: %.2f",cmt.box_area);
+    putText(im,new_boxsize_buffer,Point2f(10,150),2,1,box_color,1,4,false);
     imshow(WIN_NAME, im);
 
     return waitKey(5);
@@ -406,6 +447,7 @@ int main(int argc, char **argv)
         output_file << OUT_FILE_COL_HEADERS << endl;
         output_file << frame << "," << msecs << ",";
         output_file << cmt.points_active.size() << ",";
+		output_file << cmt.confidence<<",";
         output_file << write_rotated_rect(cmt.bb_rot) << endl;
     }
 
@@ -438,12 +480,14 @@ int main(int argc, char **argv)
             int msecs = (int) cap.get(CV_CAP_PROP_POS_MSEC);
             output_file << frame << "," << msecs << ",";
             output_file << cmt.points_active.size() << ",";
+			output_file << cmt.confidence <<",";
             output_file << write_rotated_rect(cmt.bb_rot) << endl;
         }
         else
         {
             //TODO: Provide meaningful output
             FILE_LOG(logINFO) << "#" << frame << " active: " << cmt.points_active.size();
+ 			FILE_LOG(logINFO) << "#" << frame << " Confidence: " << cmt.confidence <<"%";
         }
 
         //Display image and then quit if requested.
